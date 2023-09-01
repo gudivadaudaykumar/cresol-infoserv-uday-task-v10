@@ -18,6 +18,7 @@ class UserController extends Controller
     {
         $hobbies = Hobby::select('id', 'hobbie_name')->get()->toArray();
         if ($request->ajax()) {
+            $searchValue = $request->input('search.value');
             $data = User::with('hobbies')
                 ->select(['id', 'first_name', 'last_name'])
                 ->orderBy('created_at', 'desc');
@@ -28,13 +29,14 @@ class UserController extends Controller
                     return $user->hobbies->pluck('hobbie_name')->implode(', ');
                 })
                 ->addColumn('action', function ($row) {
-                    $btn = '<button type="button" class="btn btn-primary btn-sm edit-user" 
-                    data-user-id="' . $row->id . '">Edit</button>';
+                    $btn = '<button type="button" class="btn btn-primary btn-sm edit-user" data-user-id="' . $row->id . '">Edit</button>';
+                    $btn .= ' <button type="button" class="btn btn-danger btn-sm delete-user" data-user-id="' . $row->id . '">Delete</button>';
                     return $btn;
                 })
-                ->filterColumn('hobbies', function ($query, $keyword) {
-                    $query->whereHas('hobbies', function ($query) use ($keyword) {
-                        $query->where('hobbie_name', 'like', '%' . $keyword . '%');
+                ->filterColumn('hobbies', function ($query) use($searchValue){
+                    $searchHobbies = explode(',', $searchValue);
+                    $query->whereHas('hobbies', function ($query) use ($searchHobbies) {
+                        $query->whereIn('hobbie_name', $searchHobbies);
                     });
                 })
                 ->rawColumns(['action'])
@@ -85,4 +87,17 @@ class UserController extends Controller
             return response()->json(['user' => [], 'message' => $e->getMessage()], 500);
         }
     }
+
+    public function destroy($id)
+    {
+        try {
+            $user = User::findOrFail($id);
+            $user->hobbies()->detach();
+            $user->delete();
+            return response()->json(['message' => 'User deleted successfully'], 200);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
+    }
+
 }

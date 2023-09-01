@@ -150,10 +150,12 @@
                 this.api().columns().every(function() {
                     var column = this;
                     if (column.index() === 2) {
-                        var select = $('<input type="text" placeholder="Search hobbies" class="form-control form-control-sm" />')
+                        const input = $('<input type="text" placeholder="Search hobbies" class="form-control form-control-sm" />')
                             .appendTo($(column.footer()).empty())
                             .on('keyup change', function() {
-                                column.search($(this).val(), false, false, true).draw();
+                                const searchValue = $(this).val();
+                                const encodedSearchValue = encodeURIComponent(searchValue);
+                                column.search(encodedSearchValue, true, false, true).draw();
                             });
                     }
                 });
@@ -218,6 +220,42 @@
                         $('input[name="edithobbies[]"][value="' + hobby?.id + '"]').prop('checked', true);
                     });
                     $('#editUserModal').modal('show');
+                }
+            });
+        });
+
+
+        $(document).on('click', '.delete-user', function() {
+            const userId = $(this).data('user-id');
+            const csrfToken = $('meta[name="csrf-token"]').attr('content');
+            Swal.fire({
+                title: 'Delete User',
+                text: 'Are you sure you want to delete this user?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: "{{ url('delete-user') }}/" + userId,
+                        type: "DELETE",
+                        headers: {
+                            'X-CSRF-TOKEN': csrfToken
+                        },
+                        success: function(data) {
+                            table.clear().draw();
+                            Swal.fire(
+                                'User Deleted successfully!',
+                                '',
+                                'success'
+                            );
+                        },
+                        error: function(xhr, status, error) {
+                            alert(error);
+                        }
+                    });
                 }
             });
         });
